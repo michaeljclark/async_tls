@@ -1,9 +1,6 @@
 CXX :=          $(shell which g++ || which clang++ || which c++)
 CXXFLAGS =	-g -stdlib=libc++ -std=c++11
 LDFLAGS =	-lcrypto -lssl
-
-check_opt =     $(shell T=$$(mktemp /tmp/test.XXXX.$(2)); echo 'int main() { return 0; }' > $$T ; $(1) $(3) $$T -o /dev/null >/dev/null 2>&1 ; echo $$?; rm $$T)
-
 INCLUDES =      
 OPT_FLAGS =     -O3
 DEBUG_FLAGS =   -g
