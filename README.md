@@ -21,7 +21,7 @@ clang++ -std=c++11 openssl_async_echo_server.cc -lcrypto -lssl -o openssl_async_
 ````
 ./bin/openssl_async_echo_server
 ````
-  * in second terminal
+  * in second terminal (run twice to trigger bug)
 ````
 ./bin/openssl_async_echo_client
 ````
