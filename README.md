@@ -1,4 +1,4 @@
-# async TLS test
+# Asynchronous TLS test
 
 a simple (and currently buggy) example of asynchronous TLS
 
