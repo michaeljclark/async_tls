@@ -1,12 +1,10 @@
 # Asynchronous TLS test
 
-a simple (and currently buggy) example of asynchronous TLS
-
-Read TODO comment in `openssl_async_echo_server.cc` regarding SSL_do_handshake bug
+a simple example of asynchronous TLS
 
 ## Overview
   * very simple example of non-blocking TLS
-  * tested with boringssl and openssl
+  * compiles with boringssl and openssl
   * needs testing and feedback
   * probably leaks
 
@@ -21,7 +19,7 @@ clang++ -std=c++11 openssl_async_echo_server.cc -lcrypto -lssl -o openssl_async_
 ````
 ./bin/openssl_async_echo_server
 ````
-  * in second terminal (run twice to trigger bug)
+  * in second terminal
 ````
 ./bin/openssl_async_echo_client
 ````
