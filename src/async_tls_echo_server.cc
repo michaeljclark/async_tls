@@ -80,7 +80,7 @@ struct tls_echo_server
     void mainloop();
 };
 
-static void log_prefix(const char* prefix, const char* fmt, va_list args)
+static void valog(const char* prefix, const char* fmt, va_list args)
 {
     vector<char> buf(16);
     int len;
@@ -95,11 +95,19 @@ static void log_prefix(const char* prefix, const char* fmt, va_list args)
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
 }
 
+static void vlog(const char* prefix, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    valog(prefix, fmt, args);
+    va_end(args);
+}
+
 static void panic(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    log_prefix("fatal", fmt, args);
+    valog("fatal", fmt, args);
     va_end(args);
     exit(9);
 }
@@ -108,13 +116,13 @@ static void debugf(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    log_prefix("debug", fmt, args);
+    valog("debug", fmt, args);
     va_end(args);
 }
 
-static int log_tls_errors(const char *str, size_t len, void *bio)
+static int tls_error(const char *str, size_t len, void *bio)
 {
-    fprintf(stderr, "%s", str);
+    vlog("tls_error", "%s", str);
     return 0;
 }
 
@@ -163,14 +171,14 @@ void tls_echo_server::mainloop()
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     
     if (SSL_CTX_use_certificate_file(ctx, ssl_cert_file, SSL_FILETYPE_PEM) <= 0) {
-        ERR_print_errors_cb(log_tls_errors, NULL);
+        ERR_print_errors_cb(tls_error, NULL);
         panic("failed to load certificate: %s", ssl_cert_file);
     } else {
         debugf("loaded cert: %s", ssl_cert_file);
     }
 
     if (SSL_CTX_use_PrivateKey_file(ctx, ssl_key_file, SSL_FILETYPE_PEM) <= 0) {
-        ERR_print_errors_cb(log_tls_errors, NULL);
+        ERR_print_errors_cb(tls_error, NULL);
         panic("failed to load private key: %s", ssl_key_file);
     } else {
         debugf("loaded key: %s", ssl_key_file);
@@ -298,7 +306,7 @@ void tls_echo_server::mainloop()
                 } else {
                     buf_len = ret;
                     buf[buf_len] = '\0';
-                    printf("received: %s", buf);
+                    debugf("received: %s", buf);
                     update_state(conn, POLLOUT, ssl_app_write);
                 }
             }
@@ -310,13 +318,13 @@ void tls_echo_server::mainloop()
                     int ssl_err = SSL_get_error(conn.ssl, ret);
                     update_state(conn, ssl_err);
                 } else {
-                    printf("sent: %s", buf);
+                    debugf("sent: %s", buf);
                     update_state(conn, POLLIN, ssl_app_read);
                 }
             }
         }
     }
-    printf("exiting\n");
+    debugf("exiting\n");
     SSL_CTX_free(ctx);
 }
 

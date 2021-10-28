@@ -79,7 +79,7 @@ struct tls_echo_client
     void mainloop();
 };
 
-static void log_prefix(const char* prefix, const char* fmt, va_list args)
+static void valog(const char* prefix, const char* fmt, va_list args)
 {
     vector<char> buf(16);
     int len;
@@ -94,11 +94,19 @@ static void log_prefix(const char* prefix, const char* fmt, va_list args)
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
 }
 
+static void vlog(const char* prefix, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    valog(prefix, fmt, args);
+    va_end(args);
+}
+
 static void panic(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    log_prefix("fatal", fmt, args);
+    valog("fatal", fmt, args);
     va_end(args);
     exit(9);
 }
@@ -107,13 +115,13 @@ static void debugf(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    log_prefix("debug", fmt, args);
+    valog("debug", fmt, args);
     va_end(args);
 }
 
-static int log_tls_errors(const char *str, size_t len, void *bio)
+static int tls_error(const char *str, size_t len, void *bio)
 {
-    fprintf(stderr, "%s", str);
+    vlog("tls_error", "%s", str);
     return 0;
 }
 
@@ -162,7 +170,7 @@ void tls_echo_client::mainloop()
 
     if ((!SSL_CTX_load_verify_locations(ctx, ssl_cacert_file, NULL)) ||
         (!SSL_CTX_set_default_verify_paths(ctx))) {
-        ERR_print_errors_cb(log_tls_errors, NULL);
+        ERR_print_errors_cb(tls_error, NULL);
         panic("failed to load cacert: %s", ssl_cacert_file);
     } else {
         debugf("loaded cacert: %s", ssl_cacert_file);
@@ -265,7 +273,7 @@ void tls_echo_client::mainloop()
                     int ssl_err = SSL_get_error(conn.ssl, ret);
                     update_state(conn, ssl_err);
                 } else {
-                    printf("sent: %s", buf);
+                    debugf("sent: %s", buf);
                     update_state(conn, POLLIN, ssl_app_read);
                 }
             }
@@ -279,7 +287,7 @@ void tls_echo_client::mainloop()
                 } else {
                     buf_len = ret;
                     buf[buf_len] = '\0';
-                    printf("received: %s", buf);
+                    debugf("received: %s", buf);
                     
                     // TODO - we should probably shutdown gracefully
                     // SSL_shutdown(conn.ssl);
