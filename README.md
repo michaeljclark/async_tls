@@ -1,25 +1,22 @@
-# Asynchronous TLS test
+# Asynchronous TLS
 
-a simple example of asynchronous TLS
+a very simple example of asynchronous TLS using OpenSSL.
 
-## Overview
-  * very simple example of non-blocking TLS
-  * compiles with boringssl and openssl
-  * needs testing and feedback
-  * probably leaks
+## Building
 
-## Compiling
+requires cmake and openssl.
+
 ````
-clang++ -std=c++11 openssl_async_echo_client.cc -lcrypto -lssl -o openssl_async_echo_client
-clang++ -std=c++11 openssl_async_echo_server.cc -lcrypto -lssl -o openssl_async_echo_server
+cmake -G Ninja -B build
+cmake --build build -- --verbose
 ````
 
 ## Running
   * in first terminal
 ````
-./bin/openssl_async_echo_server
+./build/openssl_async_echo_server
 ````
   * in second terminal
 ````
-./bin/openssl_async_echo_client
+./build/openssl_async_echo_client
 ````
