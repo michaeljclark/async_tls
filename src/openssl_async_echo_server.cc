@@ -80,12 +80,16 @@ struct tls_echo_server
 
 static void log_prefix(const char* prefix, const char* fmt, va_list args)
 {
-    std::vector<char> buf(256);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, args);
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        vsnprintf(buf.data(), buf.capacity(), fmt, args);
-    }
+    std::vector<char> buf(16);
+    int len;
+
+    va_list args_dup;
+    va_copy(args_dup, args);
+
+    len = vsnprintf(NULL, 0, fmt, args);
+    buf.resize(len + 1);
+    len = vsnprintf(buf.data(), buf.capacity(), fmt, args_dup);
+
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
 }
 
