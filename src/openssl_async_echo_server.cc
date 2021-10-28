@@ -153,7 +153,7 @@ static volatile bool running = 1;
 
 void tls_echo_server::mainloop()
 {
-    SSL_CTX *ctx = SSL_CTX_new(TLSv1_server_method());
+    SSL_CTX *ctx = SSL_CTX_new(TLSv1_2_server_method());
     
     if (SSL_CTX_use_certificate_file(ctx, ssl_cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_cb(log_tls_errors, NULL);

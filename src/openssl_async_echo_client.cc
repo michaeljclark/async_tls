@@ -151,7 +151,7 @@ void tls_echo_client::close_connection(tls_connection &conn)
 
 void tls_echo_client::mainloop()
 {
-    SSL_CTX *ctx = SSL_CTX_new(TLSv1_client_method());
+    SSL_CTX *ctx = SSL_CTX_new(TLSv1_2_client_method());
 
     if ((!SSL_CTX_load_verify_locations(ctx, ssl_cacert_file, NULL)) ||
         (!SSL_CTX_set_default_verify_paths(ctx))) {
