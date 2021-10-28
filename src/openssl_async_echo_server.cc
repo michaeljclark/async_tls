@@ -58,13 +58,13 @@ static const char* state_names[] =
 struct tls_connection
 {
     tls_connection(int fd, SSL *ssl)
-        : fd(fd), ssl(ssl), state(ssl_none) {}
+        : fd(fd), ssl(ssl), state(ssl_none), save_state(ssl_none) {}
     tls_connection(const tls_connection &o)
-        : fd(o.fd), ssl(o.ssl), state(o.state) {}
+        : fd(o.fd), ssl(o.ssl), state(o.state), save_state(ssl_none) {}
 
     int fd;
     SSL *ssl;
-    ssl_state state;
+    ssl_state state, save_state;
 };
 
 struct tls_echo_server
@@ -129,6 +129,7 @@ void tls_echo_server::update_state(tls_connection &conn, int events, ssl_state n
 
 void tls_echo_server::update_state(tls_connection &conn, int ssl_err)
 {
+    conn.save_state = conn.state;
     switch (ssl_err) {
         case SSL_ERROR_WANT_READ:
             update_state(conn, POLLIN, ssl_handshake_read);
@@ -157,7 +158,7 @@ static volatile bool running = 1;
 
 void tls_echo_server::mainloop()
 {
-    SSL_CTX *ctx = SSL_CTX_new(TLSv1_2_server_method());
+    SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     
     if (SSL_CTX_use_certificate_file(ctx, ssl_cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_cb(log_tls_errors, NULL);
@@ -274,11 +275,17 @@ void tls_echo_server::mainloop()
                     int ssl_err = SSL_get_error(conn.ssl, ret);
                     update_state(conn, ssl_err);
                 } else {
-                    update_state(conn, POLLIN, ssl_app_read);
+                    /* we can get a handshake while writing response */
+                    if (conn.save_state == ssl_app_write) {
+                        update_state(conn, POLLOUT, ssl_app_write);
+                    } else {
+                        update_state(conn, POLLIN, ssl_app_read);
+                    }
                 }
             }
             else if (conn.state == ssl_app_read && pfd.revents & POLLIN)
             {
+                /* TODO: track input buffer offset to handle partial reads */
                 int ret = SSL_read(conn.ssl, buf, sizeof(buf) - 1);
                 if (ret < 0) {
                     int ssl_err = SSL_get_error(conn.ssl, ret);
@@ -295,6 +302,7 @@ void tls_echo_server::mainloop()
             }
             else if (conn.state == ssl_app_write && pfd.revents & POLLOUT)
             {
+                /* TODO: track output buffer offset to handle partial writes */
                 int ret = SSL_write(conn.ssl, buf, buf_len);
                 if (ret < 0) {
                     int ssl_err = SSL_get_error(conn.ssl, ret);
