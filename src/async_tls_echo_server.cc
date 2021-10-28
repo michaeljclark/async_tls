@@ -30,6 +30,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+template<typename T> using vector = std::vector<T>;
+template<typename K, typename V> using map = std::map<K,V>;
 
 static int listen_port = 8443;
 static int listen_backlog = 128;
@@ -69,8 +71,8 @@ struct tls_connection
 
 struct tls_echo_server
 {
-    std::vector<struct pollfd> poll_vec;
-    std::map<int,tls_connection> tls_connection_map;
+    vector<struct pollfd> poll_vec;
+    map<int,tls_connection> tls_connection_map;
     
     void update_state(tls_connection &conn, int events, ssl_state new_state);
     void update_state(tls_connection &conn, int ssl_err);
@@ -80,7 +82,7 @@ struct tls_echo_server
 
 static void log_prefix(const char* prefix, const char* fmt, va_list args)
 {
-    std::vector<char> buf(16);
+    vector<char> buf(16);
     int len;
 
     va_list args_dup;
