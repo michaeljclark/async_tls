@@ -12,11 +12,13 @@ cmake --build build -- --verbose
 ````
 
 ## Running
-  * in first terminal
+
+in first terminal
 ````
-./build/openssl_async_echo_server
+./build/async_tls_echo_server
 ````
-  * in second terminal
+
+in second terminal
 ````
-./build/openssl_async_echo_client
+./build/async_tls_echo_client
 ````

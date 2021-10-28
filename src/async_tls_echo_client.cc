@@ -1,7 +1,7 @@
 //
-//  openssl_async_echo_client.cc
+//  async_tls_echo_client.cc
 //
-//  clang++ -std=c++11 openssl_async_echo_client.cc -lcrypto -lssl -o openssl_async_echo_client
+//  c++ -std=c++11 async_tls_echo_client.cc -lcrypto -lssl -o async_tls_echo_client
 //
 //  * example of non-blocking TLS
 //  * tested with openssl/boringssl
