@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
+#include <cassert>
 #include <cerrno>
 #include <csignal>
 #include <vector>
@@ -82,15 +83,16 @@ struct tls_echo_server
 
 static void valog(const char* prefix, const char* fmt, va_list args)
 {
-    vector<char> buf(16);
+    vector<char> buf;
+    va_list args_dup;
     int len;
 
-    va_list args_dup;
     va_copy(args_dup, args);
 
-    len = vsnprintf(NULL, 0, fmt, args);
+    assert((len = vsnprintf(NULL, 0, fmt, args)) >= 0);
     buf.resize(len + 1);
-    len = vsnprintf(buf.data(), buf.capacity(), fmt, args_dup);
+    assert(len == vsnprintf(buf.data(), buf.capacity(), fmt, args_dup));
+    if (buf[len - 1] == '\n') buf[len - 1] = '\0';
 
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
 }
