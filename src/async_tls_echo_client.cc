@@ -84,13 +84,15 @@ static void valog(const char* prefix, const char* fmt, va_list args)
 {
     vector<char> buf;
     va_list args_dup;
-    int len;
+    int len, ret;
 
     va_copy(args_dup, args);
 
-    assert((len = vsnprintf(NULL, 0, fmt, args)) >= 0);
+    len = vsnprintf(NULL, 0, fmt, args);
+    assert(len >= 0);
     buf.resize(len + 1);
-    assert(len == vsnprintf(buf.data(), buf.capacity(), fmt, args_dup));
+    ret = vsnprintf(buf.data(), buf.capacity(), fmt, args_dup);
+    assert(len == ret);
     if (buf[len - 1] == '\n') buf[len - 1] = '\0';
 
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
