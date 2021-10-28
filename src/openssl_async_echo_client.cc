@@ -88,7 +88,7 @@ static void log_prefix(const char* prefix, const char* fmt, va_list args)
     fprintf(stderr, "%s: %s\n", prefix, buf.data());
 }
 
-static void log_fatal_exit(const char* fmt, ...)
+static void panic(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -97,7 +97,7 @@ static void log_fatal_exit(const char* fmt, ...)
     exit(9);
 }
 
-static void log_debug(const char* fmt, ...)
+static void debugf(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -113,13 +113,13 @@ static int log_tls_errors(const char *str, size_t len, void *bio)
 
 void tls_echo_client::update_state(tls_connection &conn, int events, ssl_state new_state)
 {
-    log_debug("fd=%d %s -> %s",
+    debugf("fd=%d %s -> %s",
               conn.fd, state_names[conn.state], state_names[new_state]);
     conn.state = new_state;
     auto pi = std::find_if(poll_vec.begin(), poll_vec.end(),
                            [&] (const struct pollfd &pfd) { return pfd.fd == conn.fd; });
     if (pi != poll_vec.end()) pi->events = events;
-    else log_fatal_exit("file descriptor missing from poll_vec: %d", conn.fd);
+    else panic("file descriptor missing from poll_vec: %d", conn.fd);
 }
 
 void tls_echo_client::update_state(tls_connection &conn, int ssl_err)
@@ -133,14 +133,14 @@ void tls_echo_client::update_state(tls_connection &conn, int ssl_err)
             break;
         default:
             SSL_load_error_strings();
-            log_fatal_exit("tls error: %s", ERR_reason_error_string(ERR_get_error()));
+            panic("tls error: %s", ERR_reason_error_string(ERR_get_error()));
             break;
     }
 }
 
 void tls_echo_client::close_connection(tls_connection &conn)
 {
-    log_debug("connection closed");
+    debugf("connection closed");
     int fd = conn.fd;
     close(fd);
     auto pi = std::find_if(poll_vec.begin(), poll_vec.end(),
@@ -156,9 +156,9 @@ void tls_echo_client::mainloop()
     if ((!SSL_CTX_load_verify_locations(ctx, ssl_cacert_file, NULL)) ||
         (!SSL_CTX_set_default_verify_paths(ctx))) {
         ERR_print_errors_cb(log_tls_errors, NULL);
-        log_fatal_exit("failed to load cacert: %s", ssl_cacert_file);
+        panic("failed to load cacert: %s", ssl_cacert_file);
     } else {
-        log_debug("loaded cacert: %s", ssl_cacert_file);
+        debugf("loaded cacert: %s", ssl_cacert_file);
     }
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
     SSL_CTX_set_verify_depth(ctx, 9);
@@ -173,31 +173,31 @@ void tls_echo_client::mainloop()
         if (he->h_addrtype == AF_INET) {
             memcpy(&saddr.sin_addr, he->h_addr_list[0], he->h_length);
         } else {
-            log_fatal_exit("unknown address type: %s", he->h_addrtype);
+            panic("unknown address type: %s", he->h_addrtype);
         }
     } else {
-        log_fatal_exit("unknown host %s", connect_host);
+        panic("unknown host %s", connect_host);
     }
 
     int connect_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (connect_fd < 0) {
-        log_fatal_exit("socket failed: %s", strerror(errno));
+        panic("socket failed: %s", strerror(errno));
     }
     if (fcntl(connect_fd, F_SETFD, FD_CLOEXEC) < 0) {
-        log_fatal_exit("fcntl(F_SETFD, FD_CLOEXEC) failed: %s", strerror(errno));
+        panic("fcntl(F_SETFD, FD_CLOEXEC) failed: %s", strerror(errno));
     }
     if (fcntl(connect_fd, F_SETFL, O_NONBLOCK) < 0) {
-        log_fatal_exit("fcntl(F_SETFL, O_NONBLOCK) failed: %s", strerror(errno));
+        panic("fcntl(F_SETFL, O_NONBLOCK) failed: %s", strerror(errno));
     }
     socklen_t addr_size = sizeof(sockaddr_in);
     if (connect(connect_fd, (struct sockaddr *) &saddr, addr_size) < 0 &&
             errno != EINPROGRESS) {
-        log_fatal_exit("connect failed: %s", strerror(errno));
+        panic("connect failed: %s", strerror(errno));
     }
     
     char saddr_name[32];
     inet_ntop(saddr.sin_family, (void*)&saddr.sin_addr, saddr_name, sizeof(saddr_name));
-    log_debug("connecting to: %s:%d", saddr_name, ntohs(saddr.sin_port));
+    debugf("connecting to: %s:%d", saddr_name, ntohs(saddr.sin_port));
 
     char buf[16384] = "Hello World\n";
     int buf_len = (int)strlen(buf);
@@ -216,7 +216,7 @@ void tls_echo_client::mainloop()
         int ret = poll(poll_vec.data(), (int)poll_vec.size(), -1);
         if (ret < 0 && (errno != EAGAIN || errno != EINTR))
         {
-            log_fatal_exit("poll failed: %s", strerror(errno));
+            panic("poll failed: %s", strerror(errno));
             exit(9);
         }
         auto poll_events = poll_vec;
