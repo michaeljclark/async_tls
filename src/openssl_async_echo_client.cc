@@ -228,6 +228,7 @@ void tls_echo_client::mainloop()
             
             if (pfd.revents & (POLLHUP | POLLERR))
             {
+                SSL_free(conn.ssl);
                 close_connection(conn);
                 break;
             }
@@ -268,7 +269,9 @@ void tls_echo_client::mainloop()
                     
                     // TODO - we should probably shutdown gracefully
                     // SSL_shutdown(conn.ssl);
+                    SSL_free(conn.ssl);
                     close_connection(conn);
+                    SSL_CTX_free(ctx);
                     
                     // exit
                     return;

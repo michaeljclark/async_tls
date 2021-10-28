@@ -149,6 +149,8 @@ void tls_echo_server::close_connection(tls_connection &conn)
     tls_connection_map.erase(fd);
 }
 
+static volatile bool running = 1;
+
 void tls_echo_server::mainloop()
 {
     SSL_CTX *ctx = SSL_CTX_new(TLSv1_server_method());
@@ -159,7 +161,7 @@ void tls_echo_server::mainloop()
     } else {
         log_debug("loaded cert: %s", ssl_cert_file);
     }
-    
+
     if (SSL_CTX_use_PrivateKey_file(ctx, ssl_key_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_cb(log_tls_errors, NULL);
         log_fatal_exit("failed to load private key: %s", ssl_key_file);
@@ -203,10 +205,10 @@ void tls_echo_server::mainloop()
     int buf_len = 0;
     poll_vec.push_back({listen_fd, POLLIN, 0});
     
-    while (true)
+    while (running)
     {
         int ret = poll(poll_vec.data(), (int)poll_vec.size(), -1);
-        if (ret < 0 && (errno != EAGAIN || errno != EINTR))
+        if (ret < 0 && errno != EAGAIN && errno != EINTR)
         {
             log_fatal_exit("poll failed: %s", strerror(errno));
         }
@@ -255,6 +257,7 @@ void tls_echo_server::mainloop()
             
             if (pfd.revents & (POLLHUP | POLLERR))
             {
+                SSL_free(conn.ssl);
                 close_connection(conn);
                 break;
             }
@@ -277,6 +280,7 @@ void tls_echo_server::mainloop()
                     int ssl_err = SSL_get_error(conn.ssl, ret);
                     update_state(conn, ssl_err);
                 } else if (ret == 0) {
+                    SSL_free(conn.ssl);
                     close_connection(conn);
                 } else {
                     buf_len = ret;
@@ -298,13 +302,38 @@ void tls_echo_server::mainloop()
             }
         }
     }
+    printf("exiting\n");
+    SSL_CTX_free(ctx);
 }
 
+static void _signal_handler(int signum, siginfo_t *info, void *)
+{
+    switch (signum) {
+        case SIGTERM:
+        case SIGINT:
+            running = 0;
+            break;
+        default:
+            break;
+    }
+}
+
+static void _install_signal_handler()
+{
+    struct sigaction sigaction_handler;
+    memset(&sigaction_handler, 0, sizeof(sigaction_handler));
+    sigaction_handler.sa_sigaction = _signal_handler;
+    sigaction_handler.sa_flags = SA_SIGINFO;
+    sigaction(SIGTERM, &sigaction_handler, nullptr);
+    sigaction(SIGINT, &sigaction_handler, nullptr);
+}
 
 int main(int argc, char **argv)
 {
     SSL_library_init();
     SSL_load_error_strings();
+
+    _install_signal_handler();
     
     tls_echo_server server;
     server.mainloop();
